@@ -3,6 +3,7 @@
 1. [Overview](#overview)
     1. [Why Use This?](#why-use-this)
     1. [Implementation](#implementation)
+    1. [Limitations and Building a Full Stack](#limitations-and-building-a-full-stack)
 1. [Generating a New Repository](#generating-a-new-repository)
 1. [Configure and Build GitHub Pages](#configure-and-build-github-pages)
 1. [Adding Packages](#adding-packages)
@@ -10,6 +11,7 @@
     1. [Adding Packages from PyPI](#adding-packages-from-pypi)
     1. [Testing the Pyodide Distribution](#testing-the-pyodide-distribution)
     1. [Adding Your Own Package](#adding-your-own-package)
+1. [Build All the Packages](#build-all-the-packages)
 1. [Using the Pyodide Distribution](#using-the-pyodide-distribution)
 
 ## Overview
@@ -26,17 +28,25 @@ This is very helpful when supporting a JupyterLite environment. Otherwise, users
 
 This repository uses its Build and Deploy GitHub Actions workflow ([`deploy.yaml`](.github/workflows/deploy.yaml)  to build a custom Pyodide distribution by cloning the latest stable version of Pyodide, adding in the additional package definition files from this repository, building the required packages, and deploying the resulting Pyodide distribution to GitHub Pages. By default, the workflow only builds the [minimum required Pyodide packages](https://pyodide.org/en/stable/development/building-from-sources.html#partial-builds) (`tag:core`), plus the ones defined in this repository. You can update [`deploy.yaml`](.github/workflows/deploy.yaml) to build additional packages by default (e.g., `tag:min-scipy-stack`).
 
-The [`deploy.yaml`](.github/workflows/deploy.yaml) workflow definition file is derived from the Pyodide [`main`](https://github.com/pyodide/pyodide/blob/main/.github/workflows/main.yml) workflow, and currently this template is pinned Pyodide version 0.27.5. You can verify this by checking around [line 35 of `deploy.yaml`](.github/workflows/deploy.yaml#L35):
+The [`deploy.yaml`](.github/workflows/deploy.yaml) workflow definition file is derived from the Pyodide [`main`](https://github.com/pyodide/pyodide/blob/main/.github/workflows/main.yml) workflow, and currently this template is pinned Pyodide version 0.27.6. You can verify this by checking around [line 35 of `deploy.yaml`](.github/workflows/deploy.yaml#L35):
 ```yaml
       - uses: actions/checkout@v4
         with:
           repository: 'pyodide/pyodide'
-          ref: '0.27.5'
+          ref: '0.27.6'
           submodules: 'recursive'
 ```
 The workflow may need be modified for future Pyodide releases.
 
+### Limitations and Building a Full Stack
+
+By default, this repository is configured to build a subset of the [available packages in Pyodide](https://pyodide.org/en/stable/usage/packages-in-pyodide.html) to save time during the build process. When you've finished developing the build process for your custom packages, you can change what packages are built by default, or run a workflow to build all of the packages you need. See the section [Build All the Packages](#build-all-the-packages).
+
 ## Generating a New Repository
+
+Click the "Use this repository" button on the top right of this repo page and select "Create a new repository".
+
+<img src="./img/use-template.png" width="25%" height="25%" style='border:2px solid #555'>
 
 These instructions apply to [`https://github.com/rpwagner/pyodide-ext`](https://github.com/rpwagner/pyodide-ext). If this is a repository generated from the original, it may not be a template, so you will need to fork it or clone it to reuse it. To generate your own repository based on this one, you can follow [GitHub's instructions](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template).
 
@@ -453,6 +463,33 @@ This process can also be used to build packages that are available source on Git
 1. Create a new folder and `meta.yaml` file in `packages` similar to the previous example.
 1. Update [`deploy.yaml`](./.github/workflows/deploy.yaml) to clone the other repository into an unused path using the [checkout action](https://github.com/actions/checkout). Look at how portions of this repository are cloned using a sparse checkout for an example.
 1. Copy the source of the other repository into the `source` folder of the new package.
+
+## Build All the Packages
+
+As described in [Limitations and Building a Full Stack](#limitations-and-building-a-full-stack), the set of packages built by default based [`deploy.yaml`](./.github/workflows/deploy.yaml) are a small subset of what's available to minimize the development time to add new packages. When that stage is complete, you will probably want to build either all of the packages available (including the new ones defined) or, the scientific computing stack, which includes Numpy, Matplotlib, and SciPy (`tag:min-scipy-stack`, plus your new packages, e.g., `tag:min-scipy-stack,seaborn`).
+
+My suggestion is to set the default to build all of the packages, so that when you make a change you don't inadvertently build just a subset of what you need. You can also use a fork of your repository for testing, but I won't go into that here.
+
+To build all of the packages in both the Pyodide distribution and your new ones, change the text in [`deploy.yaml`](./.github/workflows/deploy.yaml) like `'tag:core,PyJWT,seaborn'` to `'*'`. Note that the build will likely take a few hours (see [this recent workflow run](https://github.com/rpwagner/pyodide-ext/actions/runs/15179839466)).
+
+```yaml
+  workflow_dispatch:
+    inputs:
+      pyodide_packages:
+        description: 'Pyodide packages to build, will set PYODIDE_PACKAGES'
+        required: true
+        default: '*'
+        type: string
+...
+    env:
+      EMSDK_NUM_CORES: 2
+      EMCC_CORES: 2
+      PYODIDE_JOBS: 2
+      CCACHE_DIR: /tmp/ccache
+      PYODIDE_PACKAGES: ${{ inputs.pyodide_packages || '*' }}
+```
+
+You can still build a reduced set of packages when needed by running the workflow manually and specifying which packages as described in [Configure and Build GitHub Pages](#configure-and-build-github-pages).
 
 ## Using the Pyodide Distribution
 
