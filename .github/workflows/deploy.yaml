@@ -26,7 +26,7 @@ jobs:
       EMCC_CORES: 3
       PYODIDE_JOBS: 3
       CCACHE_DIR: /tmp/ccache
-      PYODIDE_PACKAGES: ${{ inputs.pyodide_packages || 'tag:core,PyJWT,seaborn' }}
+      PYODIDE_PACKAGES: ${{ inputs.pyodide_packages || '*' }}
  
     steps:
       - uses: actions/checkout@v4
